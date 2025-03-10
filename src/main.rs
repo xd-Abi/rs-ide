@@ -6,7 +6,7 @@ use winit::dpi::PhysicalPosition;
 use winit::error::ExternalError;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
-use winit::window::{ResizeDirection, Window, WindowId};
+use winit::window::{CursorIcon, ResizeDirection, Window, WindowId};
 
 #[derive(Default)]
 struct App {
@@ -34,6 +34,9 @@ impl ApplicationHandler for App {
         window_id: WindowId,
         event: WindowEvent,
     ) {
+        let border_threshold = 10.0;
+        let title_bar_thickness = 55.0;
+
         match event {
             WindowEvent::CloseRequested => {
                 info!("Window {:?} closed", window_id);
@@ -48,8 +51,6 @@ impl ApplicationHandler for App {
                         if let Some(window) = self.windows.get(&window_id) {
 
                             let size = window.inner_size();
-                            let border_threshold = 20.0;
-                            let title_bar_thickness = 55.0;
 
                             // @TODO: Corners
                             if position.x < border_threshold {
@@ -77,6 +78,22 @@ impl ApplicationHandler for App {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.mouse = Some(position);
+
+                if let Some(window) = self.windows.get(&window_id) {
+                    let size = window.inner_size();
+
+                    if position.x < border_threshold {
+                        window.set_cursor(CursorIcon::WResize);
+                    } else if position.x > size.width as f64 - border_threshold {
+                        window.set_cursor(CursorIcon::EResize);
+                    } else if position.y < border_threshold {
+                        window.set_cursor(CursorIcon::NResize);
+                    } else if position.y > size.height as f64 - border_threshold {
+                        window.set_cursor(CursorIcon::SResize);
+                    } else {
+                        window.set_cursor(CursorIcon::Default);
+                    }
+                }
             }
             _ => {}
         }
