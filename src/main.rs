@@ -1,9 +1,13 @@
+mod hitbox;
+
+use crate::hitbox::HitBox;
 use log::{debug, info};
 use std::collections::HashMap;
 use std::ptr::addr_eq;
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalPosition;
+use winit::dpi::{LogicalSize, PhysicalPosition};
 use winit::error::ExternalError;
+use winit::event::DeviceEvent::Button;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{CursorIcon, ResizeDirection, Window, WindowId};
@@ -46,46 +50,30 @@ impl ApplicationHandler for App {
                 info!("Window {:?} resized to: {:?}", window_id, physical_size);
             }
             WindowEvent::MouseInput { state, button, .. } => {
-                if state == ElementState::Pressed {
+                if state == ElementState::Pressed && button == MouseButton::Left {
                     if let Some(position) = self.mouse {
                         if let Some(window) = self.windows.get(&window_id) {
-
                             let size = window.inner_size();
+                            let logical_size =
+                                LogicalSize::new(size.width as f64, size.height as f64);
+                            let hit_box = HitBox::from_position(
+                                position,
+                                logical_size,
+                                border_threshold,
+                                title_bar_thickness,
+                            );
 
-                            if position.x < border_threshold && position.y < border_threshold {
-                                window
-                                    .drag_resize_window(ResizeDirection::NorthWest)
-                                    .expect("Failed to resize window");
-                            } else if position.x > size.width as f64 - border_threshold && position.y < border_threshold {
-                                window
-                                    .drag_resize_window(ResizeDirection::NorthEast)
-                                    .expect("Failed to resize window");
-                            } else if position.x < border_threshold && position.y > size.height as f64 - border_threshold {
-                                window
-                                    .drag_resize_window(ResizeDirection::SouthWest)
-                                    .expect("Failed to resize window");
-                            } else if position.x > size.width as f64 - border_threshold && position.y > size.height as f64 - border_threshold {
-                                window
-                                    .drag_resize_window(ResizeDirection::SouthEast)
-                                    .expect("Failed to resize window");
-                            } else if position.x < border_threshold {
-                                window
-                                    .drag_resize_window(ResizeDirection::West)
-                                    .expect("Failed to resize window");
-                            } else if position.x > size.width as f64 - border_threshold {
-                                window
-                                    .drag_resize_window(ResizeDirection::East)
-                                    .expect("Failed to resize window");
-                            } else if position.y < border_threshold {
-                                window
-                                    .drag_resize_window(ResizeDirection::North)
-                                    .expect("Failed to resize window");
-                            } else if position.y > size.height as f64 - border_threshold {
-                                window
-                                    .drag_resize_window(ResizeDirection::South)
-                                    .expect("Failed to resize window");
-                            } else if position.y < title_bar_thickness {
-                                window.drag_window().expect("Failed to grab drag window");
+                            match hit_box {
+                                HitBox::TitleBar => {
+                                    window.drag_window().expect("Failed to grab drag window")
+                                }
+                                _ => {
+                                    if let Some(resize_direction) = hit_box.into() {
+                                        window
+                                            .drag_resize_window(resize_direction)
+                                            .expect("Failed to resize window");
+                                    }
+                                }
                             }
                         }
                     }
@@ -96,26 +84,14 @@ impl ApplicationHandler for App {
 
                 if let Some(window) = self.windows.get(&window_id) {
                     let size = window.inner_size();
-
-                    if position.x < border_threshold && position.y < border_threshold {
-                        window.set_cursor(CursorIcon::NwResize);
-                    } else if position.x > size.width as f64 - border_threshold && position.y < border_threshold {
-                        window.set_cursor(CursorIcon::NeResize);
-                    } else if position.x < border_threshold && position.y > size.height as f64 - border_threshold {
-                        window.set_cursor(CursorIcon::SwResize);
-                    } else if position.x > size.width as f64 - border_threshold && position.y > size.height as f64 - border_threshold {
-                        window.set_cursor(CursorIcon::SeResize);
-                    } else if position.x < border_threshold {
-                        window.set_cursor(CursorIcon::WResize);
-                    } else if position.x > size.width as f64 - border_threshold {
-                        window.set_cursor(CursorIcon::EResize);
-                    } else if position.y < border_threshold {
-                        window.set_cursor(CursorIcon::NResize);
-                    } else if position.y > size.height as f64 - border_threshold {
-                        window.set_cursor(CursorIcon::SResize);
-                    } else {
-                        window.set_cursor(CursorIcon::Default);
-                    }
+                    let logical_size = LogicalSize::new(size.width as f64, size.height as f64);
+                    let hit_box = HitBox::from_position(
+                        position,
+                        logical_size,
+                        border_threshold,
+                        title_bar_thickness,
+                    );
+                    window.set_cursor(<HitBox as Into<CursorIcon>>::into(hit_box));
                 }
             }
             _ => {}
