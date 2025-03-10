@@ -52,8 +52,23 @@ impl ApplicationHandler for App {
 
                             let size = window.inner_size();
 
-                            // @TODO: Corners
-                            if position.x < border_threshold {
+                            if position.x < border_threshold && position.y < border_threshold {
+                                window
+                                    .drag_resize_window(ResizeDirection::NorthWest)
+                                    .expect("Failed to resize window");
+                            } else if position.x > size.width as f64 - border_threshold && position.y < border_threshold {
+                                window
+                                    .drag_resize_window(ResizeDirection::NorthEast)
+                                    .expect("Failed to resize window");
+                            } else if position.x < border_threshold && position.y > size.height as f64 - border_threshold {
+                                window
+                                    .drag_resize_window(ResizeDirection::SouthWest)
+                                    .expect("Failed to resize window");
+                            } else if position.x > size.width as f64 - border_threshold && position.y > size.height as f64 - border_threshold {
+                                window
+                                    .drag_resize_window(ResizeDirection::SouthEast)
+                                    .expect("Failed to resize window");
+                            } else if position.x < border_threshold {
                                 window
                                     .drag_resize_window(ResizeDirection::West)
                                     .expect("Failed to resize window");
@@ -82,7 +97,15 @@ impl ApplicationHandler for App {
                 if let Some(window) = self.windows.get(&window_id) {
                     let size = window.inner_size();
 
-                    if position.x < border_threshold {
+                    if position.x < border_threshold && position.y < border_threshold {
+                        window.set_cursor(CursorIcon::NwResize);
+                    } else if position.x > size.width as f64 - border_threshold && position.y < border_threshold {
+                        window.set_cursor(CursorIcon::NeResize);
+                    } else if position.x < border_threshold && position.y > size.height as f64 - border_threshold {
+                        window.set_cursor(CursorIcon::SwResize);
+                    } else if position.x > size.width as f64 - border_threshold && position.y > size.height as f64 - border_threshold {
+                        window.set_cursor(CursorIcon::SeResize);
+                    } else if position.x < border_threshold {
                         window.set_cursor(CursorIcon::WResize);
                     } else if position.x > size.width as f64 - border_threshold {
                         window.set_cursor(CursorIcon::EResize);
