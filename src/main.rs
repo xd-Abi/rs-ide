@@ -1,6 +1,8 @@
 mod hitbox;
+mod logging;
 
 use crate::hitbox::HitBox;
+use crate::logging::{debug, error, info, trace, warn};
 use glutin::config::{Config, ConfigTemplateBuilder, GetGlConfig, GlConfig};
 use glutin::context::{
     ContextApi, ContextAttributesBuilder, NotCurrentContext, NotCurrentGlContext,
@@ -122,7 +124,7 @@ impl ApplicationHandler for App {
                     if let Some(position) = self.mouse {
                         if position.x < 50.0 && position.y < 50.0 {
                             event_loop.exit();
-                            return
+                            return;
                         }
 
                         if let Some(WindowData { window, .. }) = &self.window {
@@ -271,10 +273,17 @@ pub fn gl_config_picker(configs: Box<dyn Iterator<Item = Config> + '_>) -> Confi
 }
 
 fn main() {
-    let event_loop = EventLoop::new().expect("Failed to create event loop");
+    logging::init();
+    error!("Some message");
+    warn!("Some message");
+    info!("Some message");
+    debug!("Some message");
+    trace!("Some message");
+
+    /*let event_loop = EventLoop::new().expect("Failed to create event loop");
     let mut app = App::default();
 
     event_loop
         .run_app(&mut app)
-        .expect("Failed to run event loop");
+        .expect("Failed to run event loop");*/
 }
