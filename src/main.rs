@@ -1,9 +1,11 @@
 mod application;
 mod config;
-mod hitbox;
 mod logging;
+mod window;
 
+use crate::application::App;
 use crate::logging::{debug, error, info, trace, warn};
+use winit::event_loop::EventLoop;
 
 fn main() {
     logging::init();
@@ -15,10 +17,10 @@ fn main() {
         config
     });
 
-    /*let event_loop = EventLoop::new().expect("Failed to create event loop");
-    let mut app = App::default();
+    let event_loop = EventLoop::new().expect("Failed to create event loop");
+    let mut app = App::new(config);
 
     event_loop
         .run_app(&mut app)
-        .expect("Failed to run event loop");*/
+        .expect("Failed to run event loop");
 }

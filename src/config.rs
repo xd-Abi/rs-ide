@@ -13,7 +13,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct WindowConfig {
+pub struct WindowConfig {
     pub width: u32,
     pub height: u32,
     pub x: i32,
