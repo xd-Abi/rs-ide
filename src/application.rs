@@ -17,11 +17,13 @@ use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::raw_window_handle::HasWindowHandle;
 use winit::window::WindowId;
+use crate::renderer::Renderer;
 
 #[derive(Debug, Default)]
 pub struct App {
     config: Config,
     window: Option<Window>,
+    renderer: Renderer
 }
 
 impl ApplicationHandler for App {
@@ -31,6 +33,7 @@ impl ApplicationHandler for App {
         }
 
         self.window = Some(Window::new("Rust IDE", &self.config.window, event_loop));
+        self.renderer = Renderer::new();
     }
 
     fn window_event(
@@ -59,6 +62,7 @@ impl ApplicationHandler for App {
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         if let Some(window) = self.window.as_mut() {
             window.draw();
+            self.renderer.draw();
         }
     }
 

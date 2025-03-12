@@ -182,11 +182,6 @@ impl Window {
     }
 
     pub fn draw(&self) {
-        unsafe {
-            gl::ClearColor(0.1, 0.2, 0.3, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-        }
-
         let context = self.context.as_ref().expect("Failed to get GL context");
 
         self.window.request_redraw();

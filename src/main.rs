@@ -2,6 +2,7 @@ mod application;
 mod config;
 mod logging;
 mod window;
+mod renderer;
 
 use crate::application::App;
 use crate::logging::{debug, error, info, trace, warn};
