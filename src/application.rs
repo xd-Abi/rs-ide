@@ -3,7 +3,6 @@ use crate::config::{Config, WindowConfig};
 use crate::logging::info;
 use crate::renderer::Renderer;
 use crate::window::Window;
-use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
@@ -13,7 +12,6 @@ pub struct App {
     config: Config,
     window: Option<Window>,
     renderer: Renderer,
-    last_frame: Instant,
 }
 
 impl ApplicationHandler for App {
@@ -34,21 +32,24 @@ impl ApplicationHandler for App {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        let now = Instant::now();
-        let delta = now - self.last_frame;
-        self.last_frame = now;
-
         if let Some(window) = self.window.as_mut() {
+            if event != WindowEvent::RedrawRequested {
+                window.request_redraw();
+            }
+
             self.renderer
-                .update(delta, window_id, window, event.clone());
+                .update(window_id, window, event.clone());
             window.update(event_loop, window_id, event.clone());
         }
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         if let Some(window) = self.window.as_mut() {
+            if window.is_focused() {
+                window.request_redraw();
+            }
+
             self.renderer.about_to_wait(&window);
-            window.about_to_wait();
         }
     }
 
@@ -79,7 +80,6 @@ impl App {
         App {
             config,
             window: None,
-            last_frame: Instant::now(),
             renderer: Renderer::default(),
         }
     }

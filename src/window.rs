@@ -26,6 +26,7 @@ pub struct Window {
     // winit does not support double click, so we track the last time, where a
     // left click happened. This is needed for advanced title bar interactions.
     last_left_click: Instant,
+    is_focused: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -106,6 +107,7 @@ impl Window {
             position: PhysicalPosition::new(window_config.x, window_config.y),
             size: PhysicalSize::new(window_config.width, window_config.height),
             last_left_click: Instant::now(),
+            is_focused: true,
         }
     }
 
@@ -120,6 +122,9 @@ impl Window {
         }
 
         match event {
+            WindowEvent::Focused(focused ) => {
+                self.is_focused = focused;
+            }
             WindowEvent::Moved(size) => {
                 self.position = size.clone();
             }
@@ -185,7 +190,7 @@ impl Window {
         }
     }
 
-    pub fn about_to_wait(&self) {
+    pub fn request_redraw(&self) {
         self.window.request_redraw();
     }
 
@@ -195,6 +200,10 @@ impl Window {
         self.surface
             .swap_buffers(context)
             .expect("Failed to swap buffers");
+    }
+
+    pub fn is_focused(&self) -> bool {
+        self.is_focused
     }
 
     pub fn get_position(&self) -> PhysicalPosition<i32> {

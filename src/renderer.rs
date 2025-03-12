@@ -5,7 +5,6 @@ use glutin::display::{GetGlDisplay, GlDisplay};
 use imgui::Context;
 use imgui_glow_renderer::AutoRenderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use std::time::Duration;
 use winit::event::{Event, WindowEvent};
 use winit::window::WindowId;
 
@@ -52,7 +51,6 @@ impl Renderer {
 
     pub fn update(
         &mut self,
-        delta: Duration,
         window_id: WindowId,
         window: &Window,
         event: WindowEvent,
@@ -69,7 +67,6 @@ impl Renderer {
             event: event.clone(),
         };
         platform.handle_event(imgui.io_mut(), &window.get_window(), &wrapped_event);
-        imgui.io_mut().update_delta_time(delta);
 
         match event {
             WindowEvent::RedrawRequested => {
