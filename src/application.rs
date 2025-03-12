@@ -68,7 +68,7 @@ impl ApplicationHandler for App {
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         info!("Exiting application...");
-        let mut window = self.window.take().expect("Window was not initialized");
+        let window = self.window.take().expect("Window was not initialized");
         let window_size = window.get_size();
         let window_position = window.get_position();
 

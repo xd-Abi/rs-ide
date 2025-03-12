@@ -10,6 +10,7 @@ use glutin::prelude::GlSurface;
 use glutin::surface::{Surface, WindowSurface};
 use glutin_winit::{DisplayBuilder, GlWindow};
 use std::ffi::{CStr, CString};
+use std::time::{Duration, Instant};
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize, Position};
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
@@ -24,6 +25,10 @@ pub struct Window {
     mouse: PhysicalPosition<f64>,
     position: PhysicalPosition<i32>,
     size: PhysicalSize<u32>,
+
+    // winit does not support double click, so we track the last time, where a
+    // left click happened. This is needed for advanced title bar interactions.
+    last_left_click: Instant,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -42,6 +47,7 @@ enum WindowInteraction {
 
 const BORDER_THRESHOLD: f64 = 10.0;
 const TITLE_BAR_THICKNESS: f64 = 55.0;
+const DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(300);
 
 impl Window {
     pub fn new(title: &str, config: &WindowConfig, event_loop: &ActiveEventLoop) -> Self {
@@ -95,6 +101,7 @@ impl Window {
             mouse: PhysicalPosition::new(0.0, 0.0),
             position: PhysicalPosition::new(config.x, config.y),
             size: PhysicalSize::new(config.width, config.height),
+            last_left_click: Instant::now(),
         }
     }
 
@@ -134,11 +141,22 @@ impl Window {
                 let interaction = WindowInteraction::from_mouse(self.mouse, size);
 
                 match interaction {
-                    WindowInteraction::TitleBar => self
-                        .window
-                        .drag_window()
-                        .expect("Failed to grab drag window"),
+                    WindowInteraction::TitleBar => {
+                        let now = Instant::now();
+                        if now.duration_since(self.last_left_click) < DOUBLE_CLICK_THRESHOLD {
+                            self.window.set_maximized(!self.window.is_maximized());
+                        }
+
+                        self.last_left_click = now;
+                        self.window
+                            .drag_window()
+                            .expect("Failed to grab drag window")
+                    }
                     _ => {
+                        if self.window.is_maximized() {
+                            return;
+                        }
+
                         if let Some(resize_direction) = interaction.into() {
                             self.window
                                 .drag_resize_window(resize_direction)
@@ -149,6 +167,11 @@ impl Window {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.mouse = position;
+
+                if self.window.is_maximized() {
+                    return;
+                }
+
                 let size = self.window.inner_size();
                 let interaction = WindowInteraction::from_mouse(self.mouse, size);
                 self.window
