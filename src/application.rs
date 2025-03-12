@@ -1,5 +1,7 @@
 use crate::config;
 use crate::config::{Config, WindowConfig};
+use crate::logging::info;
+use crate::renderer::Renderer;
 use crate::window::Window;
 use glutin::context::{
     ContextApi, ContextAttributesBuilder, NotCurrentContext, NotCurrentGlContext,
@@ -9,21 +11,21 @@ use glutin::display::{Display, GetGlDisplay, GlDisplay};
 use glutin::prelude::GlSurface;
 use glutin::surface::{Surface, WindowSurface};
 use glutin_winit::{DisplayBuilder, GlWindow};
+use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use std::ffi::{CStr, CString};
-use tracing::info;
+use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition};
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::raw_window_handle::HasWindowHandle;
 use winit::window::WindowId;
-use crate::renderer::Renderer;
 
-#[derive(Debug, Default)]
 pub struct App {
     config: Config,
     window: Option<Window>,
-    renderer: Renderer
+    renderer: Renderer,
+    last_frame: Instant,
 }
 
 impl ApplicationHandler for App {
@@ -32,8 +34,10 @@ impl ApplicationHandler for App {
             return;
         }
 
-        self.window = Some(Window::new("Rust IDE", &self.config.window, event_loop));
-        self.renderer = Renderer::new();
+        let window = Window::new("Rust IDE", &self.config.window, event_loop);
+
+        self.renderer = Renderer::new(&window);
+        self.window = Some(window);
     }
 
     fn window_event(
@@ -42,27 +46,21 @@ impl ApplicationHandler for App {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        if let Some(mut window) = self.window.as_mut() {
-            window.update(event_loop, window_id, event.clone());
-        }
+        let now = Instant::now();
+        let delta = now - self.last_frame;
+        self.last_frame = now;
 
-        match event {
-            WindowEvent::Resized(size) => unsafe {
-                gl::Viewport(
-                    0,
-                    0,
-                    size.width as gl::types::GLsizei,
-                    size.height as gl::types::GLsizei,
-                );
-            },
-            _ => {}
+        if let Some(mut window) = self.window.as_mut() {
+            self.renderer
+                .update(delta, window_id, window, event.clone());
+            window.update(event_loop, window_id, event.clone());
         }
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         if let Some(window) = self.window.as_mut() {
-            window.draw();
-            self.renderer.draw();
+            self.renderer.about_to_wait(&window);
+            window.about_to_wait();
         }
     }
 
@@ -92,7 +90,9 @@ impl App {
     pub fn new(config: Config) -> Self {
         App {
             config,
-            ..Default::default()
+            window: None,
+            last_frame: Instant::now(),
+            renderer: Renderer::default(),
         }
     }
 }

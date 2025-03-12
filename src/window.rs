@@ -1,5 +1,6 @@
 use crate::config::WindowConfig;
 use crate::logging::{debug, error, info, trace, warn};
+use glow::HasContext;
 use glutin::config::{Config, ConfigTemplateBuilder, GlConfig};
 use glutin::context::{
     ContextApi, ContextAttributesBuilder, NotCurrentContext, NotCurrentGlContext,
@@ -7,9 +8,10 @@ use glutin::context::{
 };
 use glutin::display::{Display, GetGlDisplay, GlDisplay};
 use glutin::prelude::GlSurface;
-use glutin::surface::{Surface, WindowSurface};
+use glutin::surface::{Surface, SurfaceAttributesBuilder, WindowSurface};
 use glutin_winit::{DisplayBuilder, GlWindow};
 use std::ffi::{CStr, CString};
+use std::num::NonZeroU32;
 use std::time::{Duration, Instant};
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize, Position};
 use winit::event::{ElementState, MouseButton, WindowEvent};
@@ -50,57 +52,64 @@ const TITLE_BAR_THICKNESS: f64 = 55.0;
 const DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(300);
 
 impl Window {
-    pub fn new(title: &str, config: &WindowConfig, event_loop: &ActiveEventLoop) -> Self {
+    pub fn new(title: &str, window_config: &WindowConfig, event_loop: &ActiveEventLoop) -> Self {
         info!(title = %title, "Creating window");
         let window_attributes = winit::window::WindowAttributes::default()
             .with_title(title)
             .with_decorations(false)
-            .with_position(PhysicalPosition::new(config.x, config.y))
-            .with_inner_size(LogicalSize::new(config.width, config.height));
+            .with_position(PhysicalPosition::new(window_config.x, window_config.y))
+            .with_inner_size(LogicalSize::new(window_config.width, window_config.height));
 
         let template = ConfigTemplateBuilder::new()
             .with_alpha_size(8)
             .with_transparency(false);
 
         let display_builder = DisplayBuilder::new().with_window_attributes(Some(window_attributes));
-        let (window, gl_config) = display_builder
-            .build(event_loop, template, Self::gl_config_picker)
+        let (window, config) = display_builder
+            .build(event_loop, template, |mut configs| {
+                configs.next().expect("Config missing")
+            })
             .expect("Failed to build display");
 
         let window = window.expect("Failed to create window");
-        let gl_context = Self::create_gl_context(&window, &gl_config).treat_as_possibly_current();
-        let surface_attributes = window
-            .build_surface_attributes(Default::default())
-            .expect("Failed to build surface attributes");
-
-        let gl_surface = unsafe {
-            gl_config
+        let window_raw_handle = window
+            .window_handle()
+            .expect("Failed to get raw window handle")
+            .as_raw();
+        let context_attributes = ContextAttributesBuilder::new().build(Some(window_raw_handle));
+        let context = unsafe {
+            config
                 .display()
-                .create_window_surface(&gl_config, &surface_attributes)
-                .expect("Failed to create window surface")
+                .create_context(&config, &context_attributes)
+                .expect("Failed to create OpenGL Context")
         };
 
-        gl_context
-            .make_current(&gl_surface)
+        let surface_attributes = SurfaceAttributesBuilder::<WindowSurface>::new()
+            .with_srgb(Some(true))
+            .build(
+                window_raw_handle,
+                NonZeroU32::new(1024).unwrap(),
+                NonZeroU32::new(768).unwrap(),
+            );
+
+        let surface = unsafe {
+            config
+                .display()
+                .create_window_surface(&config, &surface_attributes)
+                .expect("Failed to create OpenGL surface")
+        };
+
+        let context = context
+            .make_current(&surface)
             .expect("Failed to make context current");
-
-        unsafe {
-            gl::load_with(|symbol| {
-                let c_string = CString::new(symbol).expect("Failed to convert symbol to CString");
-                gl_surface.display().get_proc_address(&c_string).cast()
-            });
-
-            let version = CStr::from_ptr(gl::GetString(gl::VERSION) as *const i8);
-            info!("OpenGL Version: {}", version.to_string_lossy());
-        }
 
         Window {
             window,
-            context: Some(gl_context),
-            surface: gl_surface,
+            context: Some(context),
+            surface,
             mouse: PhysicalPosition::new(0.0, 0.0),
-            position: PhysicalPosition::new(config.x, config.y),
-            size: PhysicalSize::new(config.width, config.height),
+            position: PhysicalPosition::new(window_config.x, window_config.y),
+            size: PhysicalSize::new(window_config.width, window_config.height),
             last_left_click: Instant::now(),
         }
     }
@@ -181,10 +190,13 @@ impl Window {
         }
     }
 
-    pub fn draw(&self) {
+    pub fn about_to_wait(&self) {
+        self.window.request_redraw();
+    }
+
+    pub fn swap_buffers(&self) {
         let context = self.context.as_ref().expect("Failed to get GL context");
 
-        self.window.request_redraw();
         self.surface
             .swap_buffers(context)
             .expect("Failed to swap buffers");
@@ -198,58 +210,12 @@ impl Window {
         self.size
     }
 
-    // From glutin example
-    fn create_gl_context(window: &winit::window::Window, gl_config: &Config) -> NotCurrentContext {
-        let raw_window_handle = window.window_handle().ok().map(|wh| wh.as_raw());
-
-        // The context creation part.
-        let context_attributes = ContextAttributesBuilder::new().build(raw_window_handle);
-
-        // Since glutin by default tries to create OpenGL core context, which may not be
-        // present we should try gles.
-        let fallback_context_attributes = ContextAttributesBuilder::new()
-            .with_context_api(ContextApi::Gles(None))
-            .build(raw_window_handle);
-
-        // There are also some old devices that support neither modern OpenGL nor GLES.
-        // To support these we can try and create a 2.1 context.
-        let legacy_context_attributes = ContextAttributesBuilder::new()
-            .with_context_api(ContextApi::OpenGl(Some(Version::new(2, 1))))
-            .build(raw_window_handle);
-
-        // Reuse the uncurrented context from a suspended() call if it exists, otherwise
-        // this is the first time resumed() is called, where the context still
-        // has to be created.
-        let gl_display = gl_config.display();
-
-        unsafe {
-            gl_display
-                .create_context(gl_config, &context_attributes)
-                .unwrap_or_else(|_| {
-                    gl_display
-                        .create_context(gl_config, &fallback_context_attributes)
-                        .unwrap_or_else(|_| {
-                            gl_display
-                                .create_context(gl_config, &legacy_context_attributes)
-                                .expect("Failed to create context")
-                        })
-                })
-        }
+    pub fn get_window(&self) -> &winit::window::Window {
+        &self.window
     }
 
-    fn gl_config_picker(configs: Box<dyn Iterator<Item = Config> + '_>) -> Config {
-        configs
-            .reduce(|accum, config| {
-                let transparency_check = config.supports_transparency().unwrap_or(false)
-                    & !accum.supports_transparency().unwrap_or(false);
-
-                if transparency_check || config.num_samples() > accum.num_samples() {
-                    config
-                } else {
-                    accum
-                }
-            })
-            .unwrap()
+    pub fn get_context(&self) -> &Option<PossiblyCurrentContext> {
+        &self.context
     }
 }
 
