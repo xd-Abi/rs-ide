@@ -2,12 +2,11 @@ use crate::logging::info;
 use crate::window::Window;
 use glow::HasContext;
 use glutin::display::{GetGlDisplay, GlDisplay};
-use imgui::{Condition, Context};
+use imgui::Context;
 use imgui_glow_renderer::AutoRenderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use std::time::Duration;
 use winit::event::{Event, WindowEvent};
-use winit::raw_window_handle::HasDisplayHandle;
 use winit::window::WindowId;
 
 #[derive(Default)]
@@ -41,7 +40,7 @@ impl Renderer {
 
         info!("OpenGL Version: {:?}", gl.version());
 
-        let renderer = imgui_glow_renderer::AutoRenderer::new(gl, &mut imgui)
+        let renderer = AutoRenderer::new(gl, &mut imgui)
             .expect("Failed to create imgui renderer");
 
         Renderer {

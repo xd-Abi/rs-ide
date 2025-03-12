@@ -3,22 +3,10 @@ use crate::config::{Config, WindowConfig};
 use crate::logging::info;
 use crate::renderer::Renderer;
 use crate::window::Window;
-use glutin::context::{
-    ContextApi, ContextAttributesBuilder, NotCurrentContext, NotCurrentGlContext,
-    PossiblyCurrentContext, PossiblyCurrentGlContext, Version,
-};
-use glutin::display::{Display, GetGlDisplay, GlDisplay};
-use glutin::prelude::GlSurface;
-use glutin::surface::{Surface, WindowSurface};
-use glutin_winit::{DisplayBuilder, GlWindow};
-use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use std::ffi::{CStr, CString};
 use std::time::Instant;
 use winit::application::ApplicationHandler;
-use winit::dpi::{LogicalSize, PhysicalPosition};
-use winit::event::{ElementState, MouseButton, WindowEvent};
+use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
-use winit::raw_window_handle::HasWindowHandle;
 use winit::window::WindowId;
 
 pub struct App {
@@ -50,7 +38,7 @@ impl ApplicationHandler for App {
         let delta = now - self.last_frame;
         self.last_frame = now;
 
-        if let Some(mut window) = self.window.as_mut() {
+        if let Some(window) = self.window.as_mut() {
             self.renderer
                 .update(delta, window_id, window, event.clone());
             window.update(event_loop, window_id, event.clone());

@@ -1,10 +1,9 @@
-use std::backtrace::{Backtrace, BacktraceStatus};
 use std::panic;
 use std::panic::PanicHookInfo;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
-pub use tracing::{debug, error, info, trace, warn};
+pub use tracing::{debug, error, info, warn};
 
 pub fn init() {
     let tracing_subscriber = FmtSubscriber::builder()

@@ -5,7 +5,7 @@ mod window;
 mod renderer;
 
 use crate::application::App;
-use crate::logging::{debug, error, info, trace, warn};
+use crate::logging::warn;
 use winit::event_loop::EventLoop;
 
 fn main() {

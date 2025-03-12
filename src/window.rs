@@ -1,19 +1,14 @@
 use crate::config::WindowConfig;
-use crate::logging::{debug, error, info, trace, warn};
-use glow::HasContext;
-use glutin::config::{Config, ConfigTemplateBuilder, GlConfig};
-use glutin::context::{
-    ContextApi, ContextAttributesBuilder, NotCurrentContext, NotCurrentGlContext,
-    PossiblyCurrentContext, PossiblyCurrentGlContext, Version,
-};
+use crate::logging::info;
+use glutin::config::ConfigTemplateBuilder;
+use glutin::context::{ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext};
 use glutin::display::{Display, GetGlDisplay, GlDisplay};
 use glutin::prelude::GlSurface;
 use glutin::surface::{Surface, SurfaceAttributesBuilder, WindowSurface};
-use glutin_winit::{DisplayBuilder, GlWindow};
-use std::ffi::{CStr, CString};
+use glutin_winit::DisplayBuilder;
 use std::num::NonZeroU32;
 use std::time::{Duration, Instant};
-use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize, Position};
+use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::raw_window_handle::HasWindowHandle;
