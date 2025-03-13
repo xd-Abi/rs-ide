@@ -1,22 +1,12 @@
-use std::cell::RefCell;
-use crate::application::Application;
 use crate::platform::event::Event;
 use crate::platform::windows::common::get_instance_handle;
 use crate::{get_window_mut, hiword, loword, pcstr, static_pcstr};
 use std::fmt;
 use std::fmt::Debug;
-use std::rc::Rc;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Mutex, OnceLock};
 use tracing::{error, info};
-use windows::core::PCSTR;
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
-use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExA, DefWindowProcA, DestroyWindow, DispatchMessageA, GetWindowLongPtrW,
-    GetWindowLongW, PeekMessageA, PostQuitMessage, RegisterClassA, SetWindowLongPtrW,
-    TranslateMessage, UnregisterClassA, CREATESTRUCTA, CREATESTRUCTW, CW_USEDEFAULT, GWLP_USERDATA,
-    MSG, PM_REMOVE, WINDOW_EX_STYLE, WM_CLOSE, WM_NCCREATE, WM_SIZE, WNDCLASSA,
-    WS_OVERLAPPEDWINDOW, WS_VISIBLE,
-};
+use windows::Win32::UI::WindowsAndMessaging::*;
 
 #[derive(Debug, Default)]
 struct WindowHandle(HWND);
@@ -43,7 +33,7 @@ static CLASS_NAME: &[u8] = b"RustIdeWindow\0";
 static WINDOW_COUNT: OnceLock<Mutex<u8>> = OnceLock::new();
 
 impl Window {
-    pub fn new(title: &str, width: u32, height: u32) ->  Rc<RefCell<Window>> {
+    pub fn new(title: &str, width: u32, height: u32) -> Box<Window> {
         let instance = get_instance_handle();
         let mut window_count = WINDOW_COUNT
             .get_or_init(|| {
@@ -53,12 +43,12 @@ impl Window {
             .lock()
             .expect("Failed to lock window count mutex");
 
-        let window = Rc::new(RefCell::new(Window {
+        let mut window = Box::new(Window {
             handle: WindowHandle::default(),
             width,
             height,
             event_callback: None,
-        }));
+        });
 
         unsafe {
             info!(title = %title, width = %width, height = %height, "Creating window...");
@@ -74,12 +64,12 @@ impl Window {
                 None,
                 None,
                 Some(instance),
-                Some(window.as_ptr() as *mut _ as _),
+                Some(window.as_mut() as *mut _ as _),
             )
             .expect("Failed to create window");
 
             *window_count += 1;
-            window.borrow_mut().handle = WindowHandle(handle);
+            window.handle = WindowHandle(handle);
         }
 
         window

@@ -1,18 +1,17 @@
 use crate::platform::{Event, Window};
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use tracing::info;
 
 #[derive(Debug)]
 pub struct Application {
-    window: Rc<RefCell<Window>>,
+    window: Box<Window>,
     running: bool,
 }
 
 impl Application {
     pub fn new() -> Self {
+        info!("Initializing application...");
         Application {
             window: Window::new("Rust IDE", 800, 600),
             running: true,
@@ -20,10 +19,10 @@ impl Application {
     }
 
     pub fn init(&mut self) {
-        let window = Rc::clone(&self.window);
-        let mut app_ref = self as *mut Self;
+        let app_ref = self as *mut Self;
 
-        window.borrow_mut().set_event_callback(move |event| {
+        // @TODO: Fix event callback to avoid unsafe code
+        self.window.set_event_callback(move |event| {
             unsafe { (*app_ref).handle_event(event); }
         });
     }
@@ -35,7 +34,7 @@ impl Application {
         while self.running {
             let start = Instant::now();
 
-            self.window.borrow().update();
+            self.window.update();
 
             let elapsed = start.elapsed();
             if elapsed < frame_time {
@@ -48,9 +47,6 @@ impl Application {
         match event {
             Event::WindowClose => {
                 self.running = false;
-            }
-            Event::WindowResized(w, h) => {
-                info!("Window resized to {}x{}", w, h);
             }
             _ => {}
         }

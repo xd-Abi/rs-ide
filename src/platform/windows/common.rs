@@ -13,7 +13,7 @@ macro_rules! static_pcstr {
 macro_rules! pcstr {
     ($s:expr) => {{
         use windows::core::PCSTR;
-        use std::ffi::CString;;
+        use std::ffi::CString;
         PCSTR(CString::new($s).expect("Failed to convert to c-string").as_ptr() as _)
     }};
 }
