@@ -1,12 +1,16 @@
-mod application;
+use crate::logging::warn;
+use std::ffi::CString;
+use windows::core::PCSTR;
+use windows::Win32::Foundation::*;
+use windows::Win32::UI::WindowsAndMessaging::*;
+
 mod config;
 mod logging;
-mod window;
-mod renderer;
+mod platform;
 
-use crate::application::App;
-use crate::logging::warn;
-use winit::event_loop::EventLoop;
+fn to_pcstr(s: &str) -> CString {
+    CString::new(s).unwrap()  // Returns CString, keeping it alive!
+}
 
 fn main() {
     logging::init();
@@ -18,10 +22,12 @@ fn main() {
         config
     });
 
-    let event_loop = EventLoop::new().expect("Failed to create event loop");
-    let mut app = App::new(config);
-
-    event_loop
-        .run_app(&mut app)
-        .expect("Failed to run event loop");
+    unsafe {
+        MessageBoxA(
+            None,
+            pcstr!("Hello, Welcome to Rust"),
+            pcstr!("Rust IDE"),
+            MB_OK | MB_ICONERROR,
+        );
+    };
 }
