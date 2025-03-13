@@ -98,6 +98,7 @@ dependencies = [
 name = "rs-ide"
 version = "0.1.0"
 dependencies = [
+ "lazy_static",
  "serde",
  "toml",
  "tracing",

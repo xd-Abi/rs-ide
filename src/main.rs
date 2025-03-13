@@ -1,33 +1,11 @@
-use crate::logging::warn;
-use std::ffi::CString;
-use windows::core::PCSTR;
-use windows::Win32::Foundation::*;
-use windows::Win32::UI::WindowsAndMessaging::*;
-
-mod config;
-mod logging;
+mod application;
 mod platform;
 
-fn to_pcstr(s: &str) -> CString {
-    CString::new(s).unwrap()  // Returns CString, keeping it alive!
-}
+use tracing_subscriber;
+use crate::application::Application;
 
 fn main() {
-    logging::init();
-    let config = config::load().unwrap_or_else(|err| {
-        warn!(error = %err, "Failed to load configuration");
-
-        let config = config::Config::default();
-        config::save(&config).expect("Failed to save configuration");
-        config
-    });
-
-    unsafe {
-        MessageBoxA(
-            None,
-            pcstr!("Hello, Welcome to Rust"),
-            pcstr!("Rust IDE"),
-            MB_OK | MB_ICONERROR,
-        );
-    };
+    tracing_subscriber::fmt::init();
+    let app = Application::new();
+    app.run();
 }
