@@ -1,11 +1,12 @@
 mod application;
 mod platform;
 
-use tracing_subscriber;
 use crate::application::Application;
+use tracing_subscriber;
 
 fn main() {
     tracing_subscriber::fmt::init();
-    let app = Application::new();
+    let mut app = Application::new();
+    app.init();
     app.run();
 }
