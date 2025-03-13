@@ -1,16 +1,26 @@
+use std::fmt;
+use std::fmt::Debug;
+use crate::application::Application;
+use crate::platform::event::Event;
 use crate::platform::windows::common::get_instance_handle;
 use crate::{get_window_mut, hiword, loword, pcstr, static_pcstr};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use tracing::{error, info};
 use windows::core::PCSTR;
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
-use windows::Win32::UI::WindowsAndMessaging::{CreateWindowExA, DefWindowProcA, DestroyWindow, DispatchMessageA, GetWindowLongPtrW, GetWindowLongW, PeekMessageA, PostQuitMessage, RegisterClassA, SetWindowLongPtrW, TranslateMessage, UnregisterClassA, CREATESTRUCTA, CREATESTRUCTW, CW_USEDEFAULT, GWLP_USERDATA, MSG, PM_REMOVE, WINDOW_EX_STYLE, WM_NCCREATE, WM_SIZE, WNDCLASSA, WS_OVERLAPPEDWINDOW, WS_VISIBLE};
+use windows::Win32::UI::WindowsAndMessaging::{
+    CreateWindowExA, DefWindowProcA, DestroyWindow, DispatchMessageA, GetWindowLongPtrW,
+    GetWindowLongW, PeekMessageA, PostQuitMessage, RegisterClassA, SetWindowLongPtrW,
+    TranslateMessage, UnregisterClassA, CREATESTRUCTA, CREATESTRUCTW, CW_USEDEFAULT, GWLP_USERDATA,
+    MSG, PM_REMOVE, WINDOW_EX_STYLE, WM_NCCREATE, WM_SIZE, WNDCLASSA, WS_OVERLAPPEDWINDOW,
+    WS_VISIBLE,
+};
 
-#[derive(Debug)]
 pub struct Window {
     handle: HWND,
     width: u32,
     height: u32,
+    event_callback: Option<Box<dyn FnMut(Event) + Send>>,
 }
 
 static CLASS_NAME: &[u8] = b"RustIdeWindow\0";
@@ -31,6 +41,7 @@ impl Window {
             handle: HWND::default(),
             width,
             height,
+            event_callback: None,
         });
 
         unsafe {
@@ -68,6 +79,16 @@ impl Window {
         }
     }
 
+    fn trigger_event(&mut self, event: Event) {
+        if let Some(callback) = self.event_callback.as_mut() {
+            callback(event);
+        }
+    }
+
+    pub fn set_event_callback<F: FnMut(Event) + Send + 'static>(&mut self, callback: F) {
+        self.event_callback = Some(Box::new(callback));
+    }
+
     pub fn get_width(&self) -> u32 {
         self.width
     }
@@ -98,6 +119,18 @@ impl Drop for Window {
                     .expect("Failed to unregister class");
             }
         }
+    }
+}
+
+impl Debug for Window {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Window")
+            .field("handle", &self.handle)
+            .field("width", &self.width)
+            .field("height", &self.height)
+            // Can't print closures, so just label it
+            .field("event_callback", &"FnMut(...)")
+            .finish()
     }
 }
 
@@ -147,6 +180,7 @@ unsafe extern "system" fn window_proc(
 
                 window.width = new_width;
                 window.height = new_height;
+                window.trigger_event(Event::WindowResized(new_width, new_height));
 
                 LRESULT(0)
             }
