@@ -1,11 +1,12 @@
 use crate::platform::event::Event;
 use crate::platform::windows::common::get_instance_handle;
-use crate::{get_window_mut, hiword, loword, pcstr, static_pcstr};
+use crate::{get_window_mut, get_x_lparam, get_y_lparam, hiword, loword, pcstr, static_pcstr};
 use std::fmt;
 use std::fmt::Debug;
 use std::sync::{Mutex, OnceLock};
 use tracing::{error, info};
-use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
+use windows::Win32::Graphics::Gdi::{GetSysColorBrush, ScreenToClient, COLOR_WINDOW};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 #[derive(Debug, Default)]
@@ -29,7 +30,9 @@ pub struct Window {
     event_callback: Option<EventCallback>,
 }
 
-static CLASS_NAME: &[u8] = b"RustIdeWindow\0";
+const CLASS_NAME: &[u8] = b"RustIdeWindow\0";
+const CAPTION_HEIGHT: i32 = 50;
+const BORDER_THICKNESS: i32 = 10;
 static WINDOW_COUNT: OnceLock<Mutex<u8>> = OnceLock::new();
 
 impl Window {
@@ -56,7 +59,12 @@ impl Window {
                 WINDOW_EX_STYLE(0),
                 static_pcstr!(CLASS_NAME),
                 pcstr!(title),
-                WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                WS_POPUP
+                    | WS_THICKFRAME
+                    | WS_SYSMENU
+                    | WS_MAXIMIZEBOX
+                    | WS_MINIMIZEBOX
+                    | WS_VISIBLE,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
                 width as i32,
@@ -148,6 +156,7 @@ fn register_window_class(instance: HINSTANCE) {
             lpszClassName: static_pcstr!(CLASS_NAME),
             lpfnWndProc: Some(window_proc),
             hInstance: instance,
+            hbrBackground: GetSysColorBrush(COLOR_WINDOW),
             ..Default::default()
         };
 
@@ -177,6 +186,71 @@ unsafe extern "system" fn window_proc(
                 }
 
                 LRESULT(1)
+            }
+            WM_NCHITTEST => {
+                let mut cursor_pos = POINT {
+                    x: get_x_lparam!(l_param) as i32,
+                    y: get_y_lparam!(l_param) as i32,
+                };
+
+                ScreenToClient(handle, &mut cursor_pos)
+                    .expect("Failed to convert screen coordinates to client coordinates");
+
+                let mut rect = RECT::default();
+                GetClientRect(handle, &mut rect).expect("Failed to get client rect");
+
+                let x = cursor_pos.x;
+                let y = cursor_pos.y;
+
+                const LEFT: i32 = 1;
+                const TOP: i32 = 2;
+                const RIGHT: i32 = 4;
+                const BOTTOM: i32 = 8;
+
+                let mut hit = 0;
+                if x < BORDER_THICKNESS {
+                    hit |= LEFT;
+                }
+                if x > rect.right - BORDER_THICKNESS {
+                    hit |= RIGHT;
+                }
+                if y < BORDER_THICKNESS {
+                    hit |= TOP;
+                }
+                if y > rect.bottom - BORDER_THICKNESS {
+                    hit |= BOTTOM;
+                }
+
+                if (hit & TOP != 0) && (hit & LEFT != 0) {
+                    return LRESULT(HTTOPLEFT as isize);
+                }
+                if (hit & TOP != 0) && (hit & RIGHT != 0) {
+                    return LRESULT(HTTOPRIGHT as isize);
+                }
+                if (hit & BOTTOM != 0) && (hit & LEFT != 0) {
+                    return LRESULT(HTBOTTOMLEFT as isize);
+                }
+                if (hit & BOTTOM != 0) && (hit & RIGHT != 0) {
+                    return LRESULT(HTBOTTOMRIGHT as isize);
+                }
+                if hit & LEFT != 0 {
+                    return LRESULT(HTLEFT as isize);
+                }
+                if hit & TOP != 0 {
+                    return LRESULT(HTTOP as isize);
+                }
+                if hit & RIGHT != 0 {
+                    return LRESULT(HTRIGHT as isize);
+                }
+                if hit & BOTTOM != 0 {
+                    return LRESULT(HTBOTTOM as isize);
+                }
+                if y < rect.top + CAPTION_HEIGHT {
+                    return LRESULT(HTCAPTION as isize);
+                }
+
+                SetCursor(Some(LoadCursorW(None, IDC_ARROW).expect("Failed to load arrow cursor")));
+                LRESULT(HTCLIENT as isize)
             }
             WM_CLOSE => {
                 let window = get_window_mut!(handle, msg, w_param, l_param);

@@ -12,23 +12,41 @@ macro_rules! static_pcstr {
 #[macro_export]
 macro_rules! pcstr {
     ($s:expr) => {{
-        use windows::core::PCSTR;
         use std::ffi::CString;
-        PCSTR(CString::new($s).expect("Failed to convert to c-string").as_ptr() as _)
+        use windows::core::PCSTR;
+        PCSTR(
+            CString::new($s)
+                .expect("Failed to convert to c-string")
+                .as_ptr() as _,
+        )
     }};
 }
 
 #[macro_export]
 macro_rules! loword {
-    ($lparam:expr) => {
-        ($lparam.0 & 0xFFFF) as u16
+    ($l_param:expr) => {
+        ($l_param.0 & 0xFFFF) as u16
     };
 }
 
 #[macro_export]
 macro_rules! hiword {
-    ($lparam:expr) => {
-        (($lparam.0 >> 16) & 0xFFFF) as u16
+    ($l_param:expr) => {
+        (($l_param.0 >> 16) & 0xFFFF) as u16
+    };
+}
+
+#[macro_export]
+macro_rules! get_x_lparam {
+    ($l_param:expr) => {
+        ($l_param.0 & 0xFFFF) as i16
+    };
+}
+
+#[macro_export]
+macro_rules! get_y_lparam {
+    ($l_param:expr) => {
+        (($l_param.0 >> 16) & 0xFFFF) as i16
     };
 }
 

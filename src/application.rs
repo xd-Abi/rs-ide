@@ -28,7 +28,7 @@ impl Application {
     }
 
     pub fn run(&self) {
-        let target_fps = 1.0 / 30.0;
+        let target_fps = 1.0 / 60.0;
         let frame_time = Duration::from_secs_f64(target_fps);
 
         while self.running {
