@@ -249,7 +249,9 @@ unsafe extern "system" fn window_proc(
                     return LRESULT(HTCAPTION as isize);
                 }
 
-                SetCursor(Some(LoadCursorW(None, IDC_ARROW).expect("Failed to load arrow cursor")));
+                SetCursor(Some(
+                    LoadCursorW(None, IDC_ARROW).expect("Failed to load arrow cursor"),
+                ));
                 LRESULT(HTCLIENT as isize)
             }
             WM_CLOSE => {
