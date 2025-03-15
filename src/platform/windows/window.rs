@@ -1,4 +1,4 @@
-use crate::platform::event::Event;
+use crate::events::{Event, MouseButton};
 use crate::platform::windows::common::get_instance_handle;
 use crate::{get_window_mut, get_x_lparam, get_y_lparam, hiword, loword, pcstr, static_pcstr};
 use std::fmt;
@@ -32,7 +32,7 @@ pub struct Window {
 
 const CLASS_NAME: &[u8] = b"RustIdeWindow\0";
 const CAPTION_HEIGHT: i32 = 50;
-const BORDER_THICKNESS: i32 = 10;
+const BORDER_THICKNESS: i32 = 7;
 static WINDOW_COUNT: OnceLock<Mutex<u8>> = OnceLock::new();
 
 impl Window {
@@ -269,6 +269,43 @@ unsafe extern "system" fn window_proc(
                 window.height = new_height;
                 window.trigger_event(Event::WindowResized(new_width, new_height));
 
+                LRESULT(0)
+            }
+            WM_MOUSEMOVE => {
+                let x = get_x_lparam!(l_param) as i32;
+                let y = get_y_lparam!(l_param) as i32;
+                let window = get_window_mut!(handle, msg, w_param, l_param);
+                window.trigger_event(Event::MouseMove(x, y));
+                LRESULT(0)
+            }
+            WM_LBUTTONDOWN => {
+                let window = get_window_mut!(handle, msg, w_param, l_param);
+                window.trigger_event(Event::MouseDown(MouseButton::Left));
+                LRESULT(0)
+            }
+            WM_LBUTTONUP => {
+                let window = get_window_mut!(handle, msg, w_param, l_param);
+                window.trigger_event(Event::MouseRelease(MouseButton::Left));
+                LRESULT(0)
+            }
+            WM_RBUTTONDOWN => {
+                let window = get_window_mut!(handle, msg, w_param, l_param);
+                window.trigger_event(Event::MouseDown(MouseButton::Right));
+                LRESULT(0)
+            }
+            WM_RBUTTONUP => {
+                let window = get_window_mut!(handle, msg, w_param, l_param);
+                window.trigger_event(Event::MouseRelease(MouseButton::Right));
+                LRESULT(0)
+            }
+            WM_MBUTTONDOWN => {
+                let window = get_window_mut!(handle, msg, w_param, l_param);
+                window.trigger_event(Event::MouseDown(MouseButton::Middle));
+                LRESULT(0)
+            }
+            WM_MBUTTONUP => {
+                let window = get_window_mut!(handle, msg, w_param, l_param);
+                window.trigger_event(Event::MouseRelease(MouseButton::Middle));
                 LRESULT(0)
             }
             _ => DefWindowProcA(handle, msg, w_param, l_param),

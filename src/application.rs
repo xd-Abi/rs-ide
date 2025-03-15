@@ -1,7 +1,8 @@
-use crate::platform::{Event, Window};
+use crate::events::Event;
+use crate::platform::Window;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
-use tracing::info;
+use tracing::{debug, info};
 
 #[derive(Debug)]
 pub struct Application {
@@ -22,8 +23,8 @@ impl Application {
         let app_ref = self as *mut Self;
 
         // @TODO: Fix event callback to avoid unsafe code
-        self.window.set_event_callback(move |event| {
-            unsafe { (*app_ref).handle_event(event); }
+        self.window.set_event_callback(move |event| unsafe {
+            (*app_ref).handle_event(event);
         });
     }
 

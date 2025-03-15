@@ -1,5 +1,6 @@
 mod application;
 mod platform;
+mod events;
 
 use crate::application::Application;
 use tracing_subscriber;
