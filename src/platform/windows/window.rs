@@ -1,13 +1,27 @@
 use crate::events::{Event, Key, MouseButton};
+use crate::platform::opengl::context::OpenGLGraphicsContext;
 use crate::platform::windows::common::get_instance_handle;
 use crate::platform::windows::mapping::vk_to_key;
 use crate::{get_window_mut, get_x_lparam, get_y_lparam, hiword, loword, pcstr, static_pcstr};
+use gl::types::*;
+use raw_window_handle::{
+    RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
+};
+use std::ffi::{CStr, CString};
 use std::fmt;
 use std::fmt::Debug;
+use std::num::NonZeroIsize;
+use std::ptr;
+use std::ptr::null_mut;
 use std::sync::{Mutex, OnceLock};
 use tracing::{error, info};
+use windows::core::imp::GetProcAddress;
+use windows::core::PCSTR;
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
+use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::Graphics::Gdi::{GetSysColorBrush, ScreenToClient, COLOR_WINDOW};
+use windows::Win32::Graphics::OpenGL::*;
+use windows::Win32::System::LibraryLoader::GetModuleHandleA;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
@@ -30,6 +44,7 @@ pub struct Window {
     width: u32,
     height: u32,
     event_callback: Option<EventCallback>,
+    graphics: Option<OpenGLGraphicsContext>,
 }
 
 const CLASS_NAME: &[u8] = b"RustIdeWindow\0";
@@ -53,6 +68,7 @@ impl Window {
             width,
             height,
             event_callback: None,
+            graphics: None,
         });
 
         unsafe {
@@ -80,6 +96,15 @@ impl Window {
 
             *window_count += 1;
             window.handle = WindowHandle(handle);
+
+            let raw_window_handle = to_raw_window_handle(handle);
+            let raw_display_handle = get_raw_display_handle();
+            window.graphics = Some(OpenGLGraphicsContext::new(
+                raw_window_handle,
+                raw_display_handle,
+                width,
+                height,
+            ));
         }
 
         window
@@ -92,6 +117,10 @@ impl Window {
                 let _ = TranslateMessage(&msg);
                 DispatchMessageA(&msg);
             }
+        }
+
+        if let Some(graphics) = &self.graphics {
+            graphics.swap_buffers();
         }
     }
 
@@ -169,6 +198,20 @@ fn register_window_class(instance: HINSTANCE) {
             );
         }
     }
+}
+
+fn to_raw_window_handle(handle: HWND) -> RawWindowHandle {
+    let handle_nonzero = NonZeroIsize::new(handle.0 as isize).unwrap();
+    let instance_nonzero = NonZeroIsize::new(get_instance_handle().0 as isize).unwrap();
+
+    let mut win32_handle = Win32WindowHandle::new(handle_nonzero);
+    win32_handle.hinstance = Some(instance_nonzero);
+
+    RawWindowHandle::Win32(win32_handle)
+}
+
+fn get_raw_display_handle() -> RawDisplayHandle {
+    RawDisplayHandle::Windows(WindowsDisplayHandle::new())
 }
 
 unsafe extern "system" fn window_proc(

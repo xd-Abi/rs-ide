@@ -1,6 +1,7 @@
+extern crate gl;
 mod application;
-mod platform;
 mod events;
+mod platform;
 
 use crate::application::Application;
 use tracing_subscriber;
