@@ -1,5 +1,6 @@
 use crate::events::{Event, Key, MouseButton};
 use crate::platform::windows::common::get_instance_handle;
+use crate::platform::windows::mapping::vk_to_key;
 use crate::{get_window_mut, get_x_lparam, get_y_lparam, hiword, loword, pcstr, static_pcstr};
 use std::fmt;
 use std::fmt::Debug;
@@ -288,7 +289,7 @@ unsafe extern "system" fn window_proc(
             WM_LBUTTONUP => {
                 let window = get_window_mut!(handle, msg, w_param, l_param);
                 window.trigger_event(Event::MouseRelease(MouseButton::Left));
-                ReleaseCapture();
+                ReleaseCapture().expect("Failed to release capture");
                 LRESULT(0)
             }
             WM_RBUTTONDOWN => {
@@ -300,7 +301,7 @@ unsafe extern "system" fn window_proc(
             WM_RBUTTONUP => {
                 let window = get_window_mut!(handle, msg, w_param, l_param);
                 window.trigger_event(Event::MouseRelease(MouseButton::Right));
-                ReleaseCapture();
+                ReleaseCapture().expect("Failed to release capture");
                 LRESULT(0)
             }
             WM_MBUTTONDOWN => {
@@ -312,7 +313,7 @@ unsafe extern "system" fn window_proc(
             WM_MBUTTONUP => {
                 let window = get_window_mut!(handle, msg, w_param, l_param);
                 window.trigger_event(Event::MouseRelease(MouseButton::Middle));
-                ReleaseCapture();
+                ReleaseCapture().expect("Failed to release capture");
                 LRESULT(0)
             }
             WM_XBUTTONDOWN => {
@@ -336,10 +337,26 @@ unsafe extern "system" fn window_proc(
                 };
                 let window = get_window_mut!(handle, msg, w_param, l_param);
                 window.trigger_event(Event::MouseRelease(button));
-                ReleaseCapture();
+                ReleaseCapture().expect("Failed to release capture");
 
                 // Prevent further processing
                 LRESULT(1)
+            }
+            WM_KEYDOWN => {
+                if let Some(key) = vk_to_key(VIRTUAL_KEY(w_param.0 as u16)) {
+                    let window = get_window_mut!(handle, msg, w_param, l_param);
+                    window.trigger_event(Event::KeyDown(key));
+                }
+
+                LRESULT(0)
+            }
+            WM_KEYUP => {
+                if let Some(key) = vk_to_key(VIRTUAL_KEY(w_param.0 as u16)) {
+                    let window = get_window_mut!(handle, msg, w_param, l_param);
+                    window.trigger_event(Event::KeyRelease(key));
+                }
+
+                LRESULT(0)
             }
             _ => DefWindowProcA(handle, msg, w_param, l_param),
         }
