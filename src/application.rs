@@ -53,7 +53,13 @@ impl Application {
                 info!("Mouse DOWN {:?}", b);
             }
             Event::MouseRelease(b) => {
-                info!("Mouse Relase {:?}", b);
+                info!("Mouse Release {:?}", b);
+            }
+            Event::KeyDown(k) => {
+                info!("Key DOWN {:?}", k);
+            }
+            Event::KeyRelease(k) => {
+                info!("Key Release {:?}", k);
             }
             _ => {}
         }
