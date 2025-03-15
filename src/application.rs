@@ -49,6 +49,12 @@ impl Application {
             Event::WindowClose => {
                 self.running = false;
             }
+            Event::MouseDown(b) => {
+                info!("Mouse DOWN {:?}", b);
+            }
+            Event::MouseRelease(b) => {
+                info!("Mouse Relase {:?}", b);
+            }
             _ => {}
         }
     }

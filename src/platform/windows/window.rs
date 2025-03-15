@@ -1,4 +1,4 @@
-use crate::events::{Event, MouseButton};
+use crate::events::{Event, Key, MouseButton};
 use crate::platform::windows::common::get_instance_handle;
 use crate::{get_window_mut, get_x_lparam, get_y_lparam, hiword, loword, pcstr, static_pcstr};
 use std::fmt;
@@ -7,6 +7,7 @@ use std::sync::{Mutex, OnceLock};
 use tracing::{error, info};
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{GetSysColorBrush, ScreenToClient, COLOR_WINDOW};
+use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 #[derive(Debug, Default)]
@@ -278,36 +279,42 @@ unsafe extern "system" fn window_proc(
                 window.trigger_event(Event::MouseMove(x, y));
                 LRESULT(0)
             }
-            WM_LBUTTONDOWN => {
+            WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN | WM_XBUTTONDOWN | WM_LBUTTONUP
+            | WM_RBUTTONUP | WM_MBUTTONUP | WM_XBUTTONUP => {
+                let button = match msg {
+                    WM_LBUTTONDOWN | WM_LBUTTONUP => MouseButton::Left,
+                    WM_RBUTTONDOWN | WM_RBUTTONUP => MouseButton::Right,
+                    WM_MBUTTONDOWN | WM_MBUTTONUP => MouseButton::Middle,
+                    _ => match hiword!(w_param) {
+                        1 => MouseButton::XButton1,
+                        2 => MouseButton::XButton2,
+                        _ => return DefWindowProcA(handle, msg, w_param, l_param),
+                    },
+                };
+
+                let is_pressed = matches!(
+                    msg,
+                    WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN | WM_XBUTTONDOWN
+                );
+
                 let window = get_window_mut!(handle, msg, w_param, l_param);
-                window.trigger_event(Event::MouseDown(MouseButton::Left));
+
+                if is_pressed {
+                    SetCapture(handle);
+                    window.trigger_event(Event::MouseDown(button));
+                } else {
+                    window.trigger_event(Event::MouseRelease(button));
+                    ReleaseCapture();
+                }
+
+                if msg == WM_XBUTTONDOWN || msg == WM_XBUTTONUP {
+                    // Prevent further processing of extra buttons
+                    return LRESULT(1);
+                }
+
                 LRESULT(0)
             }
-            WM_LBUTTONUP => {
-                let window = get_window_mut!(handle, msg, w_param, l_param);
-                window.trigger_event(Event::MouseRelease(MouseButton::Left));
-                LRESULT(0)
-            }
-            WM_RBUTTONDOWN => {
-                let window = get_window_mut!(handle, msg, w_param, l_param);
-                window.trigger_event(Event::MouseDown(MouseButton::Right));
-                LRESULT(0)
-            }
-            WM_RBUTTONUP => {
-                let window = get_window_mut!(handle, msg, w_param, l_param);
-                window.trigger_event(Event::MouseRelease(MouseButton::Right));
-                LRESULT(0)
-            }
-            WM_MBUTTONDOWN => {
-                let window = get_window_mut!(handle, msg, w_param, l_param);
-                window.trigger_event(Event::MouseDown(MouseButton::Middle));
-                LRESULT(0)
-            }
-            WM_MBUTTONUP => {
-                let window = get_window_mut!(handle, msg, w_param, l_param);
-                window.trigger_event(Event::MouseRelease(MouseButton::Middle));
-                LRESULT(0)
-            }
+
             _ => DefWindowProcA(handle, msg, w_param, l_param),
         }
     }
