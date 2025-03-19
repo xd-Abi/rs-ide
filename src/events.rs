@@ -16,9 +16,6 @@ pub enum MouseButton {
     Middle,
     XButton1,
     XButton2,
-    Extra5,
-    Extra6,
-    Extra7,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

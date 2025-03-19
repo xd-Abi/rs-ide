@@ -9,7 +9,6 @@ use tracing::{error, info};
 
 #[derive(Debug)]
 pub struct OpenGLGraphicsContext {
-    display: Display,
     context: PossiblyCurrentContext,
     surface: Surface<WindowSurface>,
 }
@@ -73,11 +72,7 @@ impl OpenGLGraphicsContext {
                 Err(e) => error!("Failed to convert OpenGL version string: {:?}", e),
             }
 
-            OpenGLGraphicsContext {
-                display,
-                context,
-                surface,
-            }
+            OpenGLGraphicsContext { context, surface }
         }
     }
 

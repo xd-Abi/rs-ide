@@ -33,8 +33,6 @@ type EventCallback = Box<dyn Fn(Event) + 'static>;
 
 pub struct Window {
     handle: WindowHandle,
-    width: u32,
-    height: u32,
     event_callback: Option<EventCallback>,
     graphics: Option<OpenGLGraphicsContext>,
 }
@@ -57,8 +55,6 @@ impl Window {
 
         let mut window = Box::new(Window {
             handle: WindowHandle::default(),
-            width,
-            height,
             event_callback: None,
             graphics: None,
         });
@@ -117,14 +113,6 @@ impl Window {
     pub fn set_event_callback<F: Fn(Event) + 'static>(&mut self, callback: F) {
         self.event_callback = Some(Box::new(callback));
     }
-
-    pub fn get_width(&self) -> u32 {
-        self.width
-    }
-
-    pub fn get_height(&self) -> u32 {
-        self.height
-    }
 }
 
 impl Drop for Window {
@@ -155,8 +143,6 @@ impl Debug for Window {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Window")
             .field("handle", &self.handle)
-            .field("width", &self.width)
-            .field("height", &self.height)
             // Can't print closures, so just label it
             .field("event_callback", &"FnMut(...)")
             .finish()
@@ -294,9 +280,6 @@ unsafe extern "system" fn window_proc(
 
                 let new_width = loword!(l_param) as u32;
                 let new_height = hiword!(l_param) as u32;
-
-                window.width = new_width;
-                window.height = new_height;
                 window.trigger_event(Event::WindowResized(new_width, new_height));
 
                 LRESULT(0)
