@@ -35,6 +35,11 @@ impl Application {
         while self.running {
             let start = Instant::now();
 
+            unsafe {
+                gl::ClearColor(0.8, 0.2, 0.2, 1.0);
+                gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            }
+
             self.window.update();
 
             let elapsed = start.elapsed();
@@ -48,6 +53,11 @@ impl Application {
         match event {
             Event::WindowClose => {
                 self.running = false;
+            }
+            Event::WindowResized(width, height) => {
+                unsafe {
+                    gl::Viewport(0, 0, width as i32, height as i32);
+                }
             }
             Event::MouseDown(b) => {
                 info!("Mouse DOWN {:?}", b);

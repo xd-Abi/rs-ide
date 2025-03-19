@@ -77,12 +77,7 @@ impl Window {
                 WINDOW_EX_STYLE(0),
                 static_pcstr!(CLASS_NAME),
                 pcstr!(title),
-                WS_POPUP
-                    | WS_THICKFRAME
-                    | WS_SYSMENU
-                    | WS_MAXIMIZEBOX
-                    | WS_MINIMIZEBOX
-                    | WS_VISIBLE,
+                WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
                 width as i32,
@@ -113,14 +108,11 @@ impl Window {
     pub fn update(&self) {
         unsafe {
             let mut msg = MSG::default();
-            while PeekMessageA(&mut msg, None, 0, 0, PM_REMOVE).into() {
+            // Process one message per frame (avoids blocking)
+            if PeekMessageA(&mut msg, None, 0, 0, PM_REMOVE).into() {
                 let _ = TranslateMessage(&msg);
                 DispatchMessageA(&msg);
             }
-        }
-
-        if let Some(graphics) = &self.graphics {
-            graphics.swap_buffers();
         }
     }
 
@@ -299,6 +291,7 @@ unsafe extern "system" fn window_proc(
                 ));
                 LRESULT(HTCLIENT as isize)
             }
+            WM_NCCALCSIZE => LRESULT(0),
             WM_CLOSE => {
                 let window = get_window_mut!(handle, msg, w_param, l_param);
                 window.trigger_event(Event::WindowClose);
@@ -313,6 +306,20 @@ unsafe extern "system" fn window_proc(
                 window.width = new_width;
                 window.height = new_height;
                 window.trigger_event(Event::WindowResized(new_width, new_height));
+
+                LRESULT(0)
+            }
+            WM_PAINT => {
+                let window = get_window_mut!(handle, msg, w_param, l_param);
+
+                let mut ps = PAINTSTRUCT::default();
+                BeginPaint(handle, &mut ps);
+
+                if let Some(graphics) = &window.graphics {
+                    graphics.swap_buffers();
+                }
+
+                EndPaint(handle, &ps).expect("Failed to end painting");
 
                 LRESULT(0)
             }
