@@ -1,27 +1,19 @@
-use crate::events::{Event, Key, MouseButton};
+use crate::events::{Event, MouseButton};
 use crate::platform::opengl::context::OpenGLGraphicsContext;
 use crate::platform::windows::common::get_instance_handle;
 use crate::platform::windows::mapping::vk_to_key;
 use crate::{get_window_mut, get_x_lparam, get_y_lparam, hiword, loword, pcstr, static_pcstr};
-use gl::types::*;
 use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle,
 };
-use std::ffi::{CStr, CString};
 use std::fmt;
 use std::fmt::Debug;
 use std::num::NonZeroIsize;
-use std::ptr;
-use std::ptr::null_mut;
 use std::sync::{Mutex, OnceLock};
 use tracing::{error, info};
-use windows::core::imp::GetProcAddress;
-use windows::core::PCSTR;
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::Graphics::Gdi::{GetSysColorBrush, ScreenToClient, COLOR_WINDOW};
-use windows::Win32::Graphics::OpenGL::*;
-use windows::Win32::System::LibraryLoader::GetModuleHandleA;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 

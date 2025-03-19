@@ -1,5 +1,5 @@
 use crate::events::Key;
-use tracing::{info, warn};
+use tracing::warn;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
 
 pub fn vk_to_key(vk: VIRTUAL_KEY) -> Option<Key> {
