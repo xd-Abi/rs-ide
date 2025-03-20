@@ -1,14 +1,11 @@
-extern crate gl;
-mod application;
+pub mod app;
 mod events;
-mod platform;
 
-use crate::application::Application;
+use app::App;
 use tracing_subscriber;
 
 fn main() {
     tracing_subscriber::fmt::init();
-    let mut app = Application::new();
-    app.init();
+    let mut app = App::new();
     app.run();
 }
