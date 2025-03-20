@@ -1,5 +1,6 @@
 pub mod app;
 mod events;
+mod platform;
 
 use app::App;
 use tracing_subscriber;
