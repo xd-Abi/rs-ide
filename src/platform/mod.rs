@@ -1,7 +1,7 @@
 use crate::events::EventQueue;
+use cfg_if::cfg_if;
 use std::fmt::Debug;
 use std::sync::Arc;
-use cfg_if::cfg_if;
 
 /// A trait defining a platform-specific window abstraction.
 ///
@@ -55,6 +55,5 @@ mod windows;
 cfg_if! {
     if #[cfg(target_os = "windows")] {
         pub type Window = windows::window::WindowsWindow;
-        pub use windows::system::*;
     }
 }

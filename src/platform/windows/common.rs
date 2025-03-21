@@ -1,6 +1,3 @@
-use windows::Win32::Foundation::HINSTANCE;
-use windows::Win32::System::LibraryLoader::GetModuleHandleA;
-
 /// Converts a static byte string into a WinAPI-compatible PCSTR.
 ///
 /// # Arguments
@@ -50,28 +47,6 @@ macro_rules! pcstr {
                 .as_ptr() as _,
         )
     }};
-}
-
-/// The default class name for window registration.
-///
-/// This name is used when registering a window class with the Windows API.
-pub const WINDOW_CLASS_NAME: &[u8] = b"RustIdeWindow\0";
-
-/// This function is needed for registering window classes in the Windows API.
-///
-/// # Returns
-///
-/// * `HINSTANCE` - A handle to the current process instance.
-///
-/// # Example
-///
-/// ```rust
-/// let instance = unsafe { get_instance_handle() };
-/// ```
-pub unsafe fn get_instance_handle() -> HINSTANCE {
-    GetModuleHandleA(None)
-        .expect("Failed to get module handle.")
-        .into()
 }
 
 #[cfg(test)]
